@@ -1,0 +1,43 @@
+---
+title: "Cutoff automated"
+author: "MULTIVAC"
+date: "18/10/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+```
+
+
+Abre un dataframe vacío y usa fix para llenarlo gráficamente. 
+
+```{r}
+ctrl_OD <- data.frame()
+fix(ctrl_OD)
+ctrl_OD
+```
+
+
+Se define la función cutoff, se reemplaza la columna 1 (cutoff$V1) por una variable iterativa. 
+```{r}
+CUTOFF <- function(
+m=mean(ctrl_OD[i]),
+s=sd(ctrl_OD[i]),
+n=length(ctrl_OD[i]),
+df=n-1,
+tcrit=qt(0.05, df=df, lower.tail = FALSE),  #95% confidence level
+f=tcrit*(sqrt(1+(1/n))),
+cutoff_value=m+(f*s))
+cutoff_value
+```
+
+Con un for se hacen todas las columnas al mismo tiempo. 
+```{r}
+ctrl_OD %>% 
+for(i in var1:var3)
+{CUTOFF}
+```
+
+
