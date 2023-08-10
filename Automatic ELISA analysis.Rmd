@@ -1,0 +1,124 @@
+---
+title: "Automatic ELISA Analysis"
+author: "David Pérez Saucedo"
+date: "20/1/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+#Reference: Frey, A., Canzio, JD., Zurakowski. 1998. A statistically defined endpoint titer 
+#          determination method for immunoassays. Journal of Immunological Methods. 221:35-41. 
+#Copy the column containing the ODs of negative control in excel sheet (do not copy the heading).
+
+ctrl_OD=read.table("clipboard")             
+ctrl_OD
+m=mean(ctrl_OD$V1)
+s=sd(ctrl_OD$V1)
+n=length(ctrl_OD$V1)
+df=n-1
+tcrit=qt(0.05, df=df, lower.tail = FALSE)  #95% confidence level
+f=tcrit*(sqrt(1+(1/n)))
+cutoff_value=m+(f*s)
+cutoff_value
+
+```
+
+
+```{r}
+# Define a function to perform regression and calculate titre, R^2, and p-value
+calculate_metrics <- function(column) {
+  Regression = lm(Dilutions ~ column, data = OD)
+  log10_Regression = lm(log10(Dilutions) ~ column, data = OD)
+  reciprocal_Regression = lm((1/Dilutions) ~ column, data = OD)
+  
+  summary_reg = summary(Regression)
+  summary_log10 = summary(log10_Regression)
+  summary_reciprocal = summary(reciprocal_Regression)
+  
+  Titre = c(coef(Regression)[1] + cutoff * coef(Regression)[2],
+            10 ^ (coef(log10_Regression)[1] + cutoff * coef(log10_Regression)[2]),
+            1 / (coef(reciprocal_Regression)[1] + cutoff * coef(reciprocal_Regression)[2]))
+  
+  R_squared = c(summary_reg$r.squared, summary_log10$r.squared, summary_reciprocal$r.squared)
+  p_value = c(summary_reg$coefficients[2, 4], summary_log10$coefficients[2, 4], summary_reciprocal$coefficients[2, 4])
+  
+  return(cbind(Titre, R_squared, p_value))
+}
+```
+
+
+```{r}
+cutoff = 0.089  # Enter the cutoff value here
+OD = read.table("clipboard")
+Dilutions = c(500,1500,4500,13500)
+# Apply the function to each column of OD using sapply
+results = t(sapply(OD, calculate_metrics))
+
+# Create a results table
+results_table = data.frame(Titre_Linear = results[, 1],
+                           Titre_log10 = results[, 2],
+                           Titre_rec = results[, 3],
+                           Rsq_lin = results[, 4],
+                           R_squared_Log10 = results[, 5],
+                           R_squared_rec = results[, 6],
+                           p_lin = results[, 7],
+                           p_log10 = results[, 8],
+                           p_value_Reciprocal = results[, 9])
+results_table
+
+```
+
+
+
+
+
+
+
+```{r}
+#Enter the cutoff value here
+cutoff = 0.085                
+OD = read.table("clipboard")
+Dilutions = c(100, 200, 400, 800, 1600, 3200)
+
+regresiones = function(objeto) {
+    obs = data.frame(Dilutions, objeto)
+    
+    simple = lm(Dilutions ~ ., data = obs)
+    log10 = lm(log10(Dilutions)~ ., data = obs)
+    reciprocal = lm(1/Dilutions~ ., data = obs)
+    
+    Titre_1 = coef(simple)[1] + (cutoff)*coef(simple)[2]
+    
+    A = coef(log10)[1] + (cutoff)*coef(log10)[2]
+    Titre_2 = 10^A
+    B = coef(reciprocal)[1] + (cutoff)*coef(reciprocal)[2]
+    Titre_3=1/B
+    
+    c(Titre_1, Titre_2, Titre_3)
+}
+
+sapply(OD, regresiones)
+
+simple = function(x) {
+    obs = data.frame(Dilutions, x)
+    summary(lm(Dilutions~ ., data = obs))
+}
+log_10 = function(x) {
+    obs = data.frame(Dilutions, x)
+    summary(lm(log10(Dilutions)~ ., data = obs))
+}
+reciprocal = function(x) {
+    obs = data.frame(Dilutions, x)
+    summary(lm(1/Dilutions~ ., data = obs))
+}
+
+lapply(OD, simple)
+lapply(OD, log_10)
+lapply(OD, reciprocal)
+
+```
+
